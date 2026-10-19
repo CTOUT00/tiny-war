@@ -2,11 +2,11 @@
 
 Tiny War is a small turn-based strategy game we're building in Godot for our COMP214 project management class at Saskatchewan Polytechnic. Two players sit at the same computer, each controls a base in opposite corners of a small grid, and the goal is to knock down the other player's base first.
 
-We're team Noob (RegA 2026), and yes, we picked the name ourselves.
+We're team Noob, and yes, we picked the name ourselves.
 
 ## Where we're at
 
-Early days. The planning is done and we're just starting the actual Godot project, so there's nothing playable in here yet. The alpha demo is on **October 26**, the beta is on **November 23**, and the final presentation is **November 30**. This README will get updated as the game turns into something you can actually run.
+Early days. The planning is done and we're just starting the actual Godot project, so there's nothing playable in here yet. This README will get updated as the game turns into something you can actually run.
 
 ## How the game is supposed to work
 
@@ -33,6 +33,3 @@ Early days. The planning is done and we're just starting the actual Godot projec
 | Chakma Dev            | Programming Lead |
 | Toutsaint Christopher | Media Lead       |
 | Thi Thuy Vi Nguyen    | Document Lead    |
-
-## Wish list
-
