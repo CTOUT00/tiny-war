@@ -18,7 +18,7 @@ func is_tile_open(tile: Vector2i, occupied_tiles: Array) -> bool:
 
 # get open tiles next to bases available to deploy units
 func get_open_deploy_tiles(base_position: Vector2i, occupied_tiles: Array) -> Array:
-	var list = [base_position] + get_adjacent_tiles(base_position)
+	var list = get_adjacent_tiles(base_position)
 	var result = []
 	for tile in list:
 		if is_tile_open(tile, occupied_tiles):

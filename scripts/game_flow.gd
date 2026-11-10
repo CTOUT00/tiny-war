@@ -3,8 +3,8 @@ extends Node2D
 const MAX_UNITS_PER_PLAYER = 6
 
 const BASE_POSITIONS = {
-	1: Vector2i(0, 0),
-	2: Vector2i(11, 7),
+	1: Vector2i(1, 1),
+	2: Vector2i(10,6),
 }
 
 var selected_unit_index = -1
@@ -73,7 +73,7 @@ func _draw() -> void:
 			draw_rect(Rect2(pos, Vector2(64, 64)), Color.YELLOW, false, 3.0)
 
 func occupied_tiles() -> Array:
-	var tiles = []
+	var tiles = [Vector2i(1,1), Vector2i(10,6)]
 	for unit in units:
 		tiles.append(unit["position"])
 	return tiles
