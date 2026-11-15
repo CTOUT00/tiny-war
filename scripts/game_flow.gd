@@ -65,11 +65,9 @@ func _ready() -> void:
 		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
 	_on_pick("melee")
 	
-	# TEMP TEST
-	units.append({"player": 1, "type": "melee", "position": Vector2i(10, 5), "hp": 100})
-	units.append({"player": 1, "type": "melee", "position": Vector2i(9, 5), "hp": 100})
-	units.append({"player": 1, "type": "melee", "position": Vector2i(2, 1), "hp": 100})
-	units.append({"player": 1, "type": "melee", "position": Vector2i(9, 6), "hp": 10})
+	turn_counter.turn_limit_reached.connect(_on_turn_limit)
+	
+	turn_counter.completed_turns = 38 # TEMP
 
 
 func _draw() -> void:
@@ -306,6 +304,30 @@ func apply_base_damage(player: int) -> void:
 	units = survivors
 	selected_unit_index = -1
 	queue_redraw()
+
+func army_value(player: int) -> int:
+	var total = 0
+	for unit in units:
+		if unit["player"] == player:
+			total += UnitData.get_stats(unit["type"])["cost"]
+	return total
+
+func _on_turn_limit() -> void:
+	var winner = 0
+	if blue_base.base_hp > red_base.base_hp:
+		winner = 1
+	elif red_base.base_hp > blue_base.base_hp:
+		winner = 2
+	elif army_value(1) > army_value(2):
+		winner = 1
+	elif army_value(2) > army_value(1):
+		winner = 2
+
+	if winner == 0:
+		winner_label.text = "Draw!"
+	else:
+		winner_label.text = "Player %d wins!" % winner
+	winner_label.visible = true
 
 func end_turn() -> void:
 	TurnManager.advance_phase()
