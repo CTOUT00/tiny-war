@@ -73,7 +73,7 @@ func _draw() -> void:
 			draw_rect(Rect2(pos, Vector2(64, 64)), Color.YELLOW, false, 3.0)
 
 func occupied_tiles() -> Array:
-	var tiles = [Vector2i(1,1), Vector2i(10,6)]
+	var tiles = BASE_POSITIONS.values()
 	for unit in units:
 		tiles.append(unit["position"])
 	return tiles
@@ -207,9 +207,9 @@ func _on_move_unit(tile: Vector2i) -> void:
 			print("Cant move to this tile, occupied!")
 			return		
 		
-		var attacker_index = selected_unit_index
-		if MovementRange.can_move(units[attacker_index]["position"], tile, units[attacker_index]["type"]):
-			units[attacker_index]["position"] = tile
+		var moving_index = selected_unit_index
+		if MovementRange.can_move(units[moving_index]["position"], tile, units[moving_index]["type"]):
+			units[moving_index]["position"] = tile
 			print("Move unit to ", tile)
 			selected_unit_index = -1
 			queue_redraw()
