@@ -1,13 +1,12 @@
 extends Node2D
 
 const MAX_UNITS_PER_PLAYER = 6
-
 const BASE_POSITIONS = {
 	1: Vector2i(1, 1),
 	2: Vector2i(10,6),
 }
-
 var selected_unit_index = -1
+var selected_deploy_type := "melee";
 
 @onready var mouse_input = $"../MouseInput"
 @onready var player_economy = $"../PlayerEconomy"
@@ -25,6 +24,8 @@ var selected_unit_index = -1
 @onready var phase_hud = $"../CanvasLayer/Phase"
 
 @onready var winner_label = $"../CanvasLayer/WinnerLabel"
+
+@onready var picker = $"../CanvasLayer/Picker"
 
 var units: Array = []
 
@@ -49,6 +50,11 @@ func _ready() -> void:
 	
 	var grid = get_parent().get_node("BattleGrid")
 	position = grid.position
+	
+	for button in picker.get_children():
+		button.pressed.connect(_on_pick.bind(String(button.name)))
+		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
+	_on_pick("melee")
 	
 func _draw() -> void:
 	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
@@ -100,7 +106,7 @@ func _on_place_unit(tile: Vector2i) -> void:
 			return
 			
 		# check unit cost
-		var unit = UnitData.get_stats("melee")
+		var unit = UnitData.get_stats(selected_deploy_type)
 		var cost = unit["cost"]
 		
 		# try to purchase
@@ -110,10 +116,11 @@ func _on_place_unit(tile: Vector2i) -> void:
 		else:
 			units.append({
 				"player": current_player,
-				"type": "melee",
+				"type": selected_deploy_type,
 				"position": tile,
-				"hp": UnitData.get_stats("melee")["hp"]
+				"hp": unit["hp"]
 			})
+
 			queue_redraw() # to make the cicle appear
 			
 func _on_player_changed(player: int) -> void:
@@ -247,7 +254,10 @@ func update_hud() -> void:
 	var p2_style = player2_hud.get_theme_stylebox("normal") as StyleBoxFlat
 	p2_style.border_color = Color.YELLOW if TurnManager.current_player == 2 else Color.WHITE
 
-		
+func _on_pick(kind: String) -> void:
+	selected_deploy_type = kind
+	for b in picker.get_children():
+		b.modulate = Color.YELLOW if b.name == kind else Color.WHITE
 	
 func end_turn() -> void:
 	TurnManager.advance_phase()
