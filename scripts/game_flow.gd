@@ -64,6 +64,13 @@ func _ready() -> void:
 		button.pressed.connect(_on_pick.bind(String(button.name)))
 		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
 	_on_pick("melee")
+	
+	# TEMP TEST
+	units.append({"player": 1, "type": "melee", "position": Vector2i(10, 5), "hp": 100})
+	units.append({"player": 1, "type": "melee", "position": Vector2i(9, 5), "hp": 100})
+	units.append({"player": 1, "type": "melee", "position": Vector2i(2, 1), "hp": 100})
+	units.append({"player": 1, "type": "melee", "position": Vector2i(9, 6), "hp": 10})
+
 
 func _draw() -> void:
 	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
@@ -126,7 +133,8 @@ func _on_place_unit(tile: Vector2i) -> void:
 				"player": current_player,
 				"type": selected_deploy_type,
 				"position": tile,
-				"hp": unit["hp"]
+				"hp": unit["hp"],
+				"acted": false
 			})
 
 			queue_redraw() # to make the cicle appear
@@ -162,13 +170,17 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				queue_redraw()
 				return
 				
-		# 
+		if units[selected_unit_index]["acted"]:
+			print("This unit already attacked this turn")
+			return
+
 		var other_player = 1 if current_player == 2 else 2
 		
 		if tile == BASE_POSITIONS[other_player]:
 			var i = selected_unit_index
 			if AttackRange.can_attack(units[i]["position"], tile, UnitData.get_stats(units[i]["type"])["range"]):
 				var enemy_base = blue_base if other_player == 1 else red_base
+				units[i]["acted"] = true
 				enemy_base.take_damage(UnitData.get_stats(units[i]["type"])["atk"])
 				selected_unit_index = -1
 				queue_redraw()
@@ -184,6 +196,7 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				
 				if AttackRange.can_attack(units[attacker_index]["position"], tile, attacker_stats["range"]):
 					var damage = Damage.calculate_damage(attacker_type, units[i]["type"], attacker_stats["atk"])
+					units[attacker_index]["acted"] = true
 					units[i]["hp"] -= damage
 
 					if units[i]["hp"] <= 0:
@@ -244,6 +257,14 @@ func _on_phase_changed(player: int, phase: String) -> void:
 	selected_unit_index = -1
 	queue_redraw()
 	
+	if phase == "Income":
+		for unit in units:
+			if unit["player"] == player:
+				unit["acted"] = false
+
+	if phase == "End":
+		apply_base_damage(player)
+	
 	if phase == "Income" or phase == "End":
 		TurnManager.advance_phase()
 	elif (phase == "Move" or phase == "Act") and count_total_units(player) == 0:
@@ -271,6 +292,20 @@ func _on_pick(kind: String) -> void:
 	selected_deploy_type = kind
 	for b in picker.get_children():
 		b.modulate = Color.YELLOW if b.name == kind else Color.WHITE
+
+func apply_base_damage(player: int) -> void:
+	var enemy = 1 if player == 2 else 2
+	var survivors = []
+	for unit in units:
+		if unit["player"] == player:
+			unit["hp"] -= BaseAttack.get_base_attack_damage(BASE_POSITIONS[enemy], unit["position"], true)
+			print("Base check ", unit["position"], " hp ", unit["hp"])  # TEMP
+			if unit["hp"] <= 0:
+				continue
+		survivors.append(unit)
+	units = survivors
+	selected_unit_index = -1
+	queue_redraw()
 
 func end_turn() -> void:
 	TurnManager.advance_phase()
