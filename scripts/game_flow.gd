@@ -3,8 +3,8 @@ extends Node2D
 const MAX_UNITS_PER_PLAYER = 6
 
 const BASE_POSITIONS = {
-	1: Vector2i(0, 0),
-	2: Vector2i(11, 7),
+	1: Vector2i(1, 1),
+	2: Vector2i(10,6),
 }
 
 var selected_unit_index = -1
@@ -51,12 +51,12 @@ func _ready() -> void:
 	position = grid.position
 	
 func _draw() -> void:
-	var bluebottomcenter = GridUtils.cell_to_pixel(Vector2i(0, 0)) + Vector2(32, 64)
+	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
 	var bluesize = Vector2(128, 128)
 	var bluepos = bluebottomcenter - Vector2(bluesize.x / 2, bluesize.y)
 	draw_texture_rect(monk_blue_texture, Rect2(bluepos, Vector2(128,128)), false)
 	
-	var redbottomcenter = GridUtils.cell_to_pixel(Vector2i(11, 7)) + Vector2(32, 64)
+	var redbottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[2]) + Vector2(32, 64)
 	var redsize = Vector2(128, 128)
 	var redpos = redbottomcenter - Vector2(redsize.x / 2, redsize.y)
 	draw_texture_rect(monk_red_texture, Rect2(redpos, Vector2(128,128)), false)
@@ -73,7 +73,7 @@ func _draw() -> void:
 			draw_rect(Rect2(pos, Vector2(64, 64)), Color.YELLOW, false, 3.0)
 
 func occupied_tiles() -> Array:
-	var tiles = []
+	var tiles = BASE_POSITIONS.values()
 	for unit in units:
 		tiles.append(unit["position"])
 	return tiles
@@ -152,18 +152,18 @@ func _on_attack_unit(tile: Vector2i) -> void:
 		
 		if tile == BASE_POSITIONS[other_player]:
 			var i = selected_unit_index
-			if AttackRange.can_attack(units[i]["position"], tile, UnitData.get_stats("melee")["range"]):
+			if AttackRange.can_attack(units[i]["position"], tile, UnitData.get_stats(units[i]["type"])["range"]):
 				var enemy_base = blue_base if other_player == 1 else red_base
-				enemy_base.take_damage(UnitData.get_stats("melee")["atk"])
+				enemy_base.take_damage(UnitData.get_stats(units[i]["type"])["atk"])
 				selected_unit_index = -1
 				queue_redraw()
 				return
 			
-		var v = selected_unit_index
+		var attacker_index = selected_unit_index
 		for i in range(units.size()):
 			if units[i]["position"] == tile and units[i]["player"] == other_player:
-				if AttackRange.can_attack(units[v]["position"], tile, UnitData.get_stats("melee")["range"]):
-					units[i]["hp"] -= UnitData.get_stats("melee")["atk"]
+				if AttackRange.can_attack(units[attacker_index]["position"], tile, UnitData.get_stats(units[i]["type"])["range"]):
+					units[i]["hp"] -= UnitData.get_stats(units[i]["type"])["atk"]
 					if units[i]["hp"] <= 0:
 						units.erase(units[i])
 						print("Dealt damage, Unit removed")
@@ -207,9 +207,9 @@ func _on_move_unit(tile: Vector2i) -> void:
 			print("Cant move to this tile, occupied!")
 			return		
 		
-		var v = selected_unit_index
-		if MovementRange.can_move(units[v]["position"], tile, units[v]["type"]):
-			units[v]["position"] = tile
+		var moving_index = selected_unit_index
+		if MovementRange.can_move(units[moving_index]["position"], tile, units[moving_index]["type"]):
+			units[moving_index]["position"] = tile
 			print("Move unit to ", tile)
 			selected_unit_index = -1
 			queue_redraw()
