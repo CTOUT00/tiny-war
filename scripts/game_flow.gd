@@ -64,10 +64,6 @@ func _ready() -> void:
 		button.pressed.connect(_on_pick.bind(String(button.name)))
 		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
 	_on_pick("melee")
-	
-	# TEMP TEST, delete later
-	units.append({"player": 1, "type": "melee", "position": Vector2i(5, 3), "hp": 100})
-	units.append({"player": 2, "type": "ranged", "position": Vector2i(6, 3), "hp": 60})
 
 func _draw() -> void:
 	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
@@ -189,7 +185,6 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				if AttackRange.can_attack(units[attacker_index]["position"], tile, attacker_stats["range"]):
 					var damage = Damage.calculate_damage(attacker_type, units[i]["type"], attacker_stats["atk"])
 					units[i]["hp"] -= damage
-					print("HP now ", units[i]["hp"])
 
 					if units[i]["hp"] <= 0:
 						units.erase(units[i])
