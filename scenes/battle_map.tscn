@@ -330,4 +330,19 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_qru5d")
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Picker" type="HBoxContainer" parent="CanvasLayer" unique_id=1240740506]
+offset_left = 589.0
+offset_top = 698.0
+offset_right = 691.0
+offset_bottom = 764.0
+
+[node name="melee" type="Button" parent="CanvasLayer/Picker" unique_id=1163362514]
+layout_mode = 2
+
+[node name="ranged" type="Button" parent="CanvasLayer/Picker" unique_id=415251813]
+layout_mode = 2
+
+[node name="tank" type="Button" parent="CanvasLayer/Picker" unique_id=1908089873]
+layout_mode = 2
+
 [connection signal="pressed" from="CanvasLayer/EndturnButton" to="GameFlow" method="end_turn"]

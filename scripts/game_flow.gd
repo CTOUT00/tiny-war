@@ -1,13 +1,12 @@
 extends Node2D
 
 const MAX_UNITS_PER_PLAYER = 6
-
 const BASE_POSITIONS = {
 	1: Vector2i(1, 1),
 	2: Vector2i(10,6),
 }
-
 var selected_unit_index = -1
+var selected_deploy_type := "melee";
 
 @onready var mouse_input = $"../MouseInput"
 @onready var player_economy = $"../PlayerEconomy"
@@ -15,8 +14,6 @@ var selected_unit_index = -1
 @onready var blue_base = $"../BlueBase"
 @onready var red_base = $"../RedBase"
 
-@onready var melee_blue_texture = preload("res://assets/Units/Blue/Melee/Melee.png")
-@onready var melee_red_texture = preload("res://assets/Units/Red/Melee/Melee.png")
 @onready var monk_blue_texture = preload("res://assets/Units/Blue/Monk/Monk.png")
 @onready var monk_red_texture = preload("res://assets/Units/Red/Monk/Monk.png")
 
@@ -26,7 +23,20 @@ var selected_unit_index = -1
 
 @onready var winner_label = $"../CanvasLayer/WinnerLabel"
 
+@onready var picker = $"../CanvasLayer/Picker"
+
 var units: Array = []
+
+const SKINS = {
+	"1_melee": preload("res://assets/Units/Blue/Melee/Melee.png"),
+	"2_melee": preload("res://assets/Units/Red/Melee/Melee.png"),
+	"1_ranged": preload("res://assets/Units/Blue/Melee/Melee.png"), # placeholder until Dev's Ranged pictures
+	"2_ranged": preload("res://assets/Units/Red/Melee/Melee.png"),
+	"1_tank": preload("res://assets/Units/Blue/Tank/Warrior_Blue.png"),
+	"2_tank": preload("res://assets/Units/Red/Tank/Warrior_Red.png"),
+}
+
+# METHODS
 
 func _process(_delta: float) -> void:
 	update_hud()
@@ -50,6 +60,11 @@ func _ready() -> void:
 	var grid = get_parent().get_node("BattleGrid")
 	position = grid.position
 	
+	for button in picker.get_children():
+		button.pressed.connect(_on_pick.bind(String(button.name)))
+		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
+	_on_pick("melee")
+
 func _draw() -> void:
 	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
 	var bluesize = Vector2(128, 128)
@@ -62,7 +77,7 @@ func _draw() -> void:
 	draw_texture_rect(monk_red_texture, Rect2(redpos, Vector2(128,128)), false)
 	
 	for unit in units:
-		var texture = melee_blue_texture if unit["player"] == 1 else melee_red_texture
+		var texture = SKINS["%d_%s" % [unit["player"], unit["type"]]]
 		var tile_bottom_center = GridUtils.cell_to_pixel(unit["position"]) + Vector2(32, 64)
 		var size = Vector2(128, 128)
 		var pos = tile_bottom_center - Vector2(size.x / 2, size.y)
@@ -77,8 +92,7 @@ func occupied_tiles() -> Array:
 	for unit in units:
 		tiles.append(unit["position"])
 	return tiles
-	
-#
+
 func _on_place_unit(tile: Vector2i) -> void:
 	# figure out whose turn it is
 	var current_player = TurnManager.current_player
@@ -100,7 +114,7 @@ func _on_place_unit(tile: Vector2i) -> void:
 			return
 			
 		# check unit cost
-		var unit = UnitData.get_stats("melee")
+		var unit = UnitData.get_stats(selected_deploy_type)
 		var cost = unit["cost"]
 		
 		# try to purchase
@@ -110,22 +124,23 @@ func _on_place_unit(tile: Vector2i) -> void:
 		else:
 			units.append({
 				"player": current_player,
-				"type": "melee",
+				"type": selected_deploy_type,
 				"position": tile,
-				"hp": UnitData.get_stats("melee")["hp"]
+				"hp": unit["hp"]
 			})
+
 			queue_redraw() # to make the cicle appear
-			
+
 func _on_player_changed(player: int) -> void:
 	turn_counter.complete_turn()
 	player_economy.give_passive_income(player, turn_counter.get_completed_turns() + 1)
-	
+
 func _on_base_destroyed(player: int) -> void:
 	var winner = 1 if player == 2 else 2
 	winner_label.text = "Player " + str(winner) + " wins!"
 	winner_label.visible = true
 	print("Player ", winner, " wins!")
-	
+
 func _on_attack_unit(tile: Vector2i) -> void:
 	var current_player = TurnManager.current_player
 	
@@ -160,10 +175,17 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				return
 			
 		var attacker_index = selected_unit_index
+		var attacker_type = units[attacker_index]["type"]
+		var attacker_stats = UnitData.get_stats(attacker_type)
+		
 		for i in range(units.size()):
+			
 			if units[i]["position"] == tile and units[i]["player"] == other_player:
-				if AttackRange.can_attack(units[attacker_index]["position"], tile, UnitData.get_stats(units[i]["type"])["range"]):
-					units[i]["hp"] -= UnitData.get_stats(units[i]["type"])["atk"]
+				
+				if AttackRange.can_attack(units[attacker_index]["position"], tile, attacker_stats["range"]):
+					var damage = Damage.calculate_damage(attacker_type, units[i]["type"], attacker_stats["atk"])
+					units[i]["hp"] -= damage
+
 					if units[i]["hp"] <= 0:
 						units.erase(units[i])
 						print("Dealt damage, Unit removed")
@@ -179,9 +201,9 @@ func _on_attack_unit(tile: Vector2i) -> void:
 					print("Out of Range")
 					queue_redraw()
 					return
-		
+
 		print("No target here ", tile)
-		
+
 func _on_move_unit(tile: Vector2i) -> void:
 	var current_player = TurnManager.current_player
 	
@@ -217,7 +239,7 @@ func _on_move_unit(tile: Vector2i) -> void:
 		else:
 			print("Cant move to this tile")
 			return
-	
+
 func _on_phase_changed(player: int, phase: String) -> void:
 	selected_unit_index = -1
 	queue_redraw()
@@ -226,16 +248,14 @@ func _on_phase_changed(player: int, phase: String) -> void:
 		TurnManager.advance_phase()
 	elif (phase == "Move" or phase == "Act") and count_total_units(player) == 0:
 		TurnManager.advance_phase()
-	
-	
+
 func count_total_units(player: int) -> int:
 	var count = 0
 	for unit in units:
 		if unit["player"] == player:
 			count += 1
 	return count
-	
-	
+
 func update_hud() -> void:
 	phase_hud.text = "%s" % [TurnManager.PHASES[TurnManager.current_phase_index]]
 	player1_hud.text = "Player 1\nCoin: %d\nBase HP: %d" % [player_economy.get_coins(1), blue_base.base_hp]
@@ -247,7 +267,10 @@ func update_hud() -> void:
 	var p2_style = player2_hud.get_theme_stylebox("normal") as StyleBoxFlat
 	p2_style.border_color = Color.YELLOW if TurnManager.current_player == 2 else Color.WHITE
 
-		
-	
+func _on_pick(kind: String) -> void:
+	selected_deploy_type = kind
+	for b in picker.get_children():
+		b.modulate = Color.YELLOW if b.name == kind else Color.WHITE
+
 func end_turn() -> void:
 	TurnManager.advance_phase()
