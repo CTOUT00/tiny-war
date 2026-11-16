@@ -64,11 +64,7 @@ func _ready() -> void:
 		button.pressed.connect(_on_pick.bind(String(button.name)))
 		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
 	_on_pick("melee")
-	
-	# TEMP TEST
-	units.append({"player": 1, "type": "melee", "position": Vector2i(3, 3), "hp": 100, "acted": false})
-	units.append({"player": 2, "type": "melee", "position": Vector2i(4, 3), "hp": 100, "acted": false})
-	units.append({"player": 1, "type": "melee", "position": Vector2i(4, 2), "hp": 100, "acted": false})
+	turn_counter.turn_limit_reached.connect(_on_turn_limit)
 
 func _draw() -> void:
 	for tile in Obstacles.TILES:
@@ -104,11 +100,11 @@ func occupied_tiles() -> Array:
 func _on_place_unit(tile: Vector2i) -> void:
 	# figure out whose turn it is
 	var current_player = TurnManager.current_player
-	
+
 	# look up that player's base position
 	var base_position = BASE_POSITIONS[current_player]
 	var deploy_zone = Deployment.get_adjacent_tiles(base_position)
-	
+
 	# if clicked tile is not in that list
 	if tile not in deploy_zone:
 		print("Selected tile is not in deploy zone")
@@ -116,15 +112,15 @@ func _on_place_unit(tile: Vector2i) -> void:
 		if tile in occupied_tiles():
 			print("Tile already occupied")
 			return
-		
+
 		if count_total_units(current_player) >= MAX_UNITS_PER_PLAYER:
 			print("Max unit amount reached, cant deploy more")
 			return
-			
+
 		# check unit cost
 		var unit = UnitData.get_stats(selected_deploy_type)
 		var cost = unit["cost"]
-		
+
 		# try to purchase
 		if !player_economy.spend_coins(current_player, cost):
 			print("Cant purchase unit, not enough coin")
@@ -172,13 +168,17 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				queue_redraw()
 				return
 				
-		# 
+		if units[selected_unit_index]["acted"]:
+			print("This unit already attacked this turn")
+			return
+
 		var other_player = 1 if current_player == 2 else 2
 		
 		if tile == BASE_POSITIONS[other_player]:
 			var i = selected_unit_index
 			if AttackRange.can_attack(units[i]["position"], tile, UnitData.get_stats(units[i]["type"])["range"]):
 				var enemy_base = blue_base if other_player == 1 else red_base
+				units[i]["acted"] = true
 				enemy_base.take_damage(UnitData.get_stats(units[i]["type"])["atk"])
 				selected_unit_index = -1
 				queue_redraw()
@@ -194,6 +194,7 @@ func _on_attack_unit(tile: Vector2i) -> void:
 				
 				if AttackRange.can_attack(units[attacker_index]["position"], tile, attacker_stats["range"]):
 					var damage = Damage.calculate_damage(attacker_type, units[i]["type"], attacker_stats["atk"])
+					units[attacker_index]["acted"] = true
 					units[i]["hp"] -= damage
 
 					if units[i]["hp"] <= 0:
@@ -266,6 +267,15 @@ func _on_phase_changed(player: int, phase: String) -> void:
 	selected_unit_index = -1
 	queue_redraw()
 	
+	if phase == "Income":
+		for unit in units:
+			if unit["player"] == player:
+				unit["acted"] = false
+				unit["moved"] = false
+
+	if phase == "End":
+		apply_base_damage(player)
+	
 	if phase == "Income" or phase == "End":
 		TurnManager.advance_phase()
 	elif (phase == "Move" or phase == "Act") and count_total_units(player) == 0:
@@ -293,6 +303,43 @@ func _on_pick(kind: String) -> void:
 	selected_deploy_type = kind
 	for b in picker.get_children():
 		b.modulate = Color.YELLOW if b.name == kind else Color.WHITE
+
+func apply_base_damage(player: int) -> void:
+	var enemy = 1 if player == 2 else 2
+	var survivors = []
+	for unit in units:
+		if unit["player"] == player:
+			unit["hp"] -= BaseAttack.get_base_attack_damage(BASE_POSITIONS[enemy], unit["position"], true)
+			if unit["hp"] <= 0:
+				continue
+		survivors.append(unit)
+	units = survivors
+	selected_unit_index = -1
+	queue_redraw()
+
+func army_value(player: int) -> int:
+	var total = 0
+	for unit in units:
+		if unit["player"] == player:
+			total += UnitData.get_stats(unit["type"])["cost"]
+	return total
+
+func _on_turn_limit() -> void:
+	var winner = 0
+	if blue_base.base_hp > red_base.base_hp:
+		winner = 1
+	elif red_base.base_hp > blue_base.base_hp:
+		winner = 2
+	elif army_value(1) > army_value(2):
+		winner = 1
+	elif army_value(2) > army_value(1):
+		winner = 2
+
+	if winner == 0:
+		winner_label.text = "Draw!"
+	else:
+		winner_label.text = "Player %d wins!" % winner
+	winner_label.visible = true
 
 func end_turn() -> void:
 	TurnManager.advance_phase()
