@@ -64,8 +64,16 @@ func _ready() -> void:
 		button.pressed.connect(_on_pick.bind(String(button.name)))
 		button.text = "%s\n%d" % [button.name, UnitData.get_stats(String(button.name))["cost"]]
 	_on_pick("melee")
+	
+	# TEMP TEST
+	units.append({"player": 1, "type": "melee", "position": Vector2i(3, 3), "hp": 100, "acted": false})
+	units.append({"player": 2, "type": "melee", "position": Vector2i(4, 3), "hp": 100, "acted": false})
+	units.append({"player": 1, "type": "melee", "position": Vector2i(4, 2), "hp": 100, "acted": false})
 
 func _draw() -> void:
+	for tile in Obstacles.TILES:
+		draw_rect(Rect2(GridUtils.cell_to_pixel(tile), Vector2(64, 64)), Color(0.3, 0.3, 0.3))
+
 	var bluebottomcenter = GridUtils.cell_to_pixel(BASE_POSITIONS[1]) + Vector2(32, 64)
 	var bluesize = Vector2(128, 128)
 	var bluepos = bluebottomcenter - Vector2(bluesize.x / 2, bluesize.y)
@@ -88,7 +96,7 @@ func _draw() -> void:
 			draw_rect(Rect2(pos, Vector2(64, 64)), Color.YELLOW, false, 3.0)
 
 func occupied_tiles() -> Array:
-	var tiles = BASE_POSITIONS.values()
+	var tiles = BASE_POSITIONS.values() + Obstacles.TILES
 	for unit in units:
 		tiles.append(unit["position"])
 	return tiles
@@ -126,7 +134,9 @@ func _on_place_unit(tile: Vector2i) -> void:
 				"player": current_player,
 				"type": selected_deploy_type,
 				"position": tile,
-				"hp": unit["hp"]
+				"hp": unit["hp"],
+				"acted": false,
+				"moved": false
 			})
 
 			queue_redraw() # to make the cicle appear
@@ -227,18 +237,30 @@ func _on_move_unit(tile: Vector2i) -> void:
 				
 		if tile in occupied_tiles():
 			print("Cant move to this tile, occupied!")
-			return		
-		
-		var moving_index = selected_unit_index
-		if MovementRange.can_move(units[moving_index]["position"], tile, units[moving_index]["type"]):
-			units[moving_index]["position"] = tile
-			print("Move unit to ", tile)
-			selected_unit_index = -1
-			queue_redraw()
 			return
-		else:
+
+		var moving_index = selected_unit_index
+		var mover = units[moving_index]
+		if mover["moved"]:
+			print("This unit already moved this turn")
+			return
+
+		var path = MovementRange.find_path(
+			mover["position"],
+			tile,
+			occupied_tiles(),
+			MovementRange.get_movement_range(mover["type"])
+		)
+		if path.is_empty():
 			print("Cant move to this tile")
 			return
+
+		mover["position"] = tile
+		mover["moved"] = true
+
+		print("Move unit to ", tile)
+		selected_unit_index = -1
+		queue_redraw()
 
 func _on_phase_changed(player: int, phase: String) -> void:
 	selected_unit_index = -1
